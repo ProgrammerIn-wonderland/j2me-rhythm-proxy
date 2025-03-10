@@ -73,6 +73,7 @@
                 row.appendChild(desc);
                 row.appendChild(songID);
                 row.onclick = async () => {
+                    document.body.innerHTML = "<h1>Converting file....</h1>"
                     downloadData( await generateJar(result.songID, result.beatmapID), result.title + ".jar");
                 }
                 entryContainer.appendChild(row);
