@@ -16,10 +16,7 @@ pulsusSock.on("returnLevelSearch", (levels) => {
 
 
 
-app.get('/', (req, res) => {
-  res.send('<h1>J2ME Pulsus</h1>');
-});
-
+app.use(express.static('public'))
 
 app.get("/all/", async (req,res) => {
     const relevantMaps = beatmaps
@@ -80,9 +77,9 @@ app.get("/convert/*", async (req,res) => {
             }
             pulsusSock.off("newGrabbedLevel", listener);
             output = ""
-
+            // console.log(map)
             for (beat of map["beat"]) {
-                ms = Math.floor((beat[1] * 60000) / map.bpm)
+                ms = Math.floor((beat[1] * 60000) / map.bpm) + map.songOffset
                 startms = ms - 1_000
                 if (startms < 0)
                     startms = 0

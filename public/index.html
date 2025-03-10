@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pulsus Jar generator</title>
+    <script src="https://unpkg.com/fflate@0.8.2"></script>
+    <style>
+        body {
+            color: white;
+            background-color: black;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        table, th, td {
+          border: 1px solid;
+        }
+    </style>
+</head>
+<body>
+    <h1>Start typing a song, click on the song you want...</h1>
+    Song Name: <input id="textbox">
+    <table id ="entryContainer">
+    </table>
+    <script>
+        async function downloadData(data, name) {
+            const url = window.URL.createObjectURL(new Blob([data], {type: "application/octet-stream"}));
+            const a = document.createElement('a')
+            a.href = url;
+            a.download = name
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+        async function generateJar(songID, beatmapID) {
+            const inputJar = new Uint8Array(await (await fetch("/base.jar")).arrayBuffer());
+            const beatmap = new Uint8Array(await (await fetch("/convert/" + beatmapID)).arrayBuffer());
+            const songmp3 = new Uint8Array(await (await fetch("/music/" + songID)).arrayBuffer());
+            const initialJarData = await new Promise(async (res, rej) => {
+                fflate.unzip(new Uint8Array(await (await fetch("/base.jar")).arrayBuffer()), (err, data) => {
+                    if(err) {
+                        return rej(err)
+                    } else {res(data)}}
+                )
+            });
+            initialJarData["music.mp3"] = songmp3;
+            initialJarData["default_chart.txt"] = beatmap;
+            const jarDataFinished = await new Promise(async (res, rej) => {
+                fflate.zip(initialJarData, (err, data) => {
+                    if(err) {
+                        return rej(err)
+                    } else {res(data)}}
+                )
+            });
+            return jarDataFinished;
+            
+            
+            //music.mp3
+            //default_chart.txt
+        }
+        function populateEntry(results) {
+            entryContainer.innerHTML = "";
+            for (const result of results) {
+                const row = document.createElement("tr");
+                const id = document.createElement("td");
+                const name = document.createElement("td");
+                const desc = document.createElement("td");
+                const songID = document.createElement("td");
+                id.innerText = result.beatmapID;
+                name.innerText = result.title;
+                desc.innerText = result.desc;
+                songID.innerText = result.songID;
+                row.appendChild(id);
+                row.appendChild(name);
+                row.appendChild(desc);
+                row.appendChild(songID);
+                row.onclick = async () => {
+                    downloadData( await generateJar(result.songID, result.beatmapID), result.title + ".jar");
+                }
+                entryContainer.appendChild(row);
+            }
+        }
+        function parse(txt) {
+            const lines = txt.split("\n")
+            const results = [];
+            for (const line of lines) {
+                if (line == "")
+                    break;
+                const csv = line.split(",");
+                results.push({
+                    beatmapID: csv[0],
+                    title: csv[1],
+                    desc: csv[2],
+                    songID: csv[3]
+                })
+            }
+            return results;
+        }
+        async function getMaps() {
+            populateEntry(parse(await (await fetch("/search/" + textbox.value)).text()))
+            console.log("hai")
+        }
+        textbox.oninput = getMaps;
+    </script>
+</body>
+</html>
